@@ -13,34 +13,34 @@ pub fn FieldElement(comptime T: type) type {
             return .{ .num = num, .prime = prime };
         }
 
-        pub fn eq(self: @This(), other: @This()) bool {
-            return self.num == other.num and self.prime == other.prime;
+        pub fn eq(self: @This(), rhs: @This()) bool {
+            return self.num == rhs.num and self.prime == rhs.prime;
         }
 
-        pub fn ne(self: @This(), other: @This()) bool {
-            return !self.eq(other);
+        pub fn ne(self: @This(), rhs: @This()) bool {
+            return !self.eq(rhs);
         }
 
-        pub fn add(self: @This(), other: @This()) @This() {
-            if (self.prime != other.prime) {
+        pub fn add(self: @This(), rhs: @This()) @This() {
+            if (self.prime != rhs.prime) {
                 @panic("Cannot add two numbers in different fields");
             }
-            return .{ .num = (self.num + other.num) % self.prime, .prime = self.prime };
+            return .{ .num = (self.num + rhs.num) % self.prime, .prime = self.prime };
         }
 
-        pub fn sub(self: @This(), other: @This()) @This() {
-            if (self.prime != other.prime) {
+        pub fn sub(self: @This(), rhs: @This()) @This() {
+            if (self.prime != rhs.prime) {
                 @panic("Cannot subtract two numbers in different fields");
             }
-            const num = if (self.num >= other.num) self.num - other.num else self.prime - (other.num - self.num);
+            const num = if (self.num >= rhs.num) self.num - rhs.num else self.prime - (rhs.num - self.num);
             return .{ .num = num, .prime = self.prime };
         }
 
-        pub fn mul(self: @This(), other: @This()) @This() {
-            if (self.prime != other.prime) {
+        pub fn mul(self: @This(), rhs: @This()) @This() {
+            if (self.prime != rhs.prime) {
                 @panic("Cannot multiply two numbers in different fields");
             }
-            return .{ .num = (self.num * other.num) % self.prime, .prime = self.prime };
+            return .{ .num = (self.num * rhs.num) % self.prime, .prime = self.prime };
         }
 
         pub fn pow(self: @This(), exp: T) @This() {
@@ -57,11 +57,15 @@ pub fn FieldElement(comptime T: type) type {
             return result;
         }
 
-        pub fn div(self: @This(), other: @This()) @This() {
-            if (self.prime != other.prime) {
+        pub fn div(self: @This(), rhs: @This()) @This() {
+            if (self.prime != rhs.prime) {
                 @panic("Cannot divide two numbers in different fields");
             }
-            return self.mul(other.pow(self.prime - 2));
+            return self.mul(rhs.pow(self.prime - 2));
+        }
+
+        pub fn rmul(self: @This(), coefficient: anytype) @This() {
+            return .{ .num = (self.num * coefficient) % self.prime, .prime = self.prime };
         }
     };
 }
@@ -113,6 +117,12 @@ test "mul" {
     const b = FieldElement(u32).init(19, 31);
     const c = FieldElement(u32).init(22, 31);
     try std.testing.expect(a.mul(b).eq(c));
+}
+
+test "rmul" {
+    const a = FieldElement(u32).init(24, 31);
+    const b = 2;
+    try std.testing.expect(a.rmul(b).eq(a.add(a)));
 }
 
 test "pow" {
