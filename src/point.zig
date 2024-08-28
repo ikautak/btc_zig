@@ -8,11 +8,11 @@ pub fn Point(comptime T: type) type {
         b: T,
 
         fn _eq(a: ?T, b: ?T) bool {
-            switch (@typeInfo(T)) {
+            return switch (@typeInfo(T)) {
                 .Int, .Float => a == b,
-                .Struct => @field(T, "eq")(a, b),
+                .Struct => @field(T, "eq")(a.?, b.?),
                 else => @compileError("unsupported type"),
-            }
+            };
         }
 
         fn _ne(a: T, b: T) bool {
@@ -20,44 +20,43 @@ pub fn Point(comptime T: type) type {
         }
 
         fn _add(a: T, b: T) T {
-            switch (@typeInfo(T)) {
+            return switch (@typeInfo(T)) {
                 .Int, .Float => a + b,
                 .Struct => @field(T, "add")(a, b),
                 else => @compileError("unsupported type"),
-            }
+            };
         }
 
         fn _sub(a: T, b: T) T {
-            switch (@typeInfo(T)) {
+            return switch (@typeInfo(T)) {
                 .Int, .Float => a - b,
                 .Struct => @field(T, "sub")(a, b),
                 else => @compileError("unsupported type"),
-            }
+            };
         }
 
         fn _mul(a: T, b: T) T {
-            std.debug.print("asdf {any}", .{@typeInfo(T)});
-            switch (@typeInfo(T)) {
+            return switch (@typeInfo(T)) {
                 .Int, .Float => a * b,
                 .Struct => @field(T, "mul")(a, b),
                 else => @compileError("unsupported type"),
-            }
+            };
         }
 
-        fn _rmul(a: T, cofficient: anytype) T {
-            switch (@typeInfo(T)) {
-                .Int, .Float => a * cofficient,
-                .Struct => @field(T, "rmul")(a, cofficient),
+        fn _rmul(a: T, coefficient: anytype) T {
+            return switch (@typeInfo(T)) {
+                .Int, .Float => a * coefficient,
+                .Struct => @field(T, "rmul")(a, coefficient),
                 else => @compileError("unsupported type"),
-            }
+            };
         }
 
         fn _div(a: T, b: T) T {
-            switch (@typeInfo(T)) {
+            return switch (@typeInfo(T)) {
                 .Int, .Float => a / b,
                 .Struct => @field(T, "div")(a, b),
                 else => @compileError("unsupported type"),
-            }
+            };
         }
 
         pub fn init(x_: ?T, y_: ?T, a: T, b: T) @This() {
@@ -118,14 +117,14 @@ pub fn Point(comptime T: type) type {
                 const x2 = rhs.x;
                 const y2 = rhs.y;
 
-                const s = _sub(y2, y1)._div(_sub(x2, x1));
-                const x3 = _mul(s, s)._sub(x1)._sub(x2);
-                const y3 = _mul(s, _sub(x1, x3))._sub(y1);
+                const s = _div(_sub(y2.?, y1.?), _sub(x2.?, x1.?));
+                const x3 = _sub(_sub(_mul(s, s), x1.?), x2.?);
+                const y3 = _sub(_mul(s, _sub(x1.?, x3)), y1.?);
                 return .{ .x = x3, .y = y3, .a = self.a, .b = self.b };
             }
 
             // Case 4: tangent to vertical line -> Infinity
-            if (eq(self, rhs) and _eq(self.y, _rmul(self.x, 0))) {
+            if (eq(self, rhs) and _eq(self.y, _rmul(self.x.?, 0))) {
                 return .{ .x = null, .y = null, .a = self.a, .b = self.b };
             }
 
@@ -134,14 +133,14 @@ pub fn Point(comptime T: type) type {
             // s=(3*x1**2+a)/(2*y1)
             // x3=s**2-2*x1
             // y3=s*(x1-x3)-y1
-            const s = _rmul(self.x, 3)._mul(self.x)._add(self.a)._div(_rmul(self.y, 2));
-            const x3 = _rmul(s, 2)._sub(_rmul(self.x, 2));
-            const y3 = _mul(s, _sub(self.x, x3)._sub(self.y1));
+            const s = _div(_add(_mul(_rmul(self.x.?, 3), self.x.?), self.a), _rmul(self.y.?, 2));
+            const x3 = _sub(_mul(s, s), _rmul(self.x.?, 2));
+            const y3 = _sub(_mul(s, _sub(self.x.?, x3)), self.y.?);
             return .{ .x = x3, .y = y3, .a = self.a, .b = self.b };
         }
 
-        pub fn rmul(self: @This(), cofficient: anytype) @This() {
-            var coef = cofficient;
+        pub fn rmul(self: @This(), coefficient: anytype) @This() {
+            var coef = coefficient;
             var current = self;
             var result = Point(T).init(null, null, self.a, self.b);
             while (coef > 0) {
