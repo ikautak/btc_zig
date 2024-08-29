@@ -53,7 +53,7 @@ pub fn Point(comptime T: type) type {
 
         fn _div(a: T, b: T) T {
             return switch (@typeInfo(T)) {
-                .Int, .Float => a / b,
+                .Int, .Float => @divTrunc(a, b),
                 .Struct => @field(T, "div")(a, b),
                 else => @compileError("unsupported type"),
             };
@@ -101,8 +101,13 @@ pub fn Point(comptime T: type) type {
                 return self;
             }
 
+            const x1 = self.x orelse @panic("x1 is null");
+            const y1 = self.y orelse @panic("y1 is null");
+            const x2 = rhs.x orelse @panic("x2 is null");
+            const y2 = rhs.y orelse @panic("y2 is null");
+
             // Case 1: x is equal and y is not equal -> Infinity
-            if (_eq(self.x, rhs.x) and _ne(self.y, rhs.y)) {
+            if (_eq(x1, x2) and _ne(y1, y2)) {
                 return .{ .x = null, .y = null, .a = self.a, .b = self.b };
             }
 
@@ -111,20 +116,15 @@ pub fn Point(comptime T: type) type {
             // s=(y2-y1)/(x2-x1)
             // x3=s**2-x1-x2
             // y3=s*(x1-x3)-y1
-            if (_ne(self.x, rhs.x)) {
-                const x1 = self.x;
-                const y1 = self.y;
-                const x2 = rhs.x;
-                const y2 = rhs.y;
-
-                const s = _div(_sub(y2.?, y1.?), _sub(x2.?, x1.?));
-                const x3 = _sub(_sub(_mul(s, s), x1.?), x2.?);
-                const y3 = _sub(_mul(s, _sub(x1.?, x3)), y1.?);
+            if (_ne(x1, x2)) {
+                const s = _div(_sub(y2, y1), _sub(x2, x1));
+                const x3 = _sub(_sub(_mul(s, s), x1), x2);
+                const y3 = _sub(_mul(s, _sub(x1, x3)), y1);
                 return .{ .x = x3, .y = y3, .a = self.a, .b = self.b };
             }
 
             // Case 4: tangent to vertical line -> Infinity
-            if (eq(self, rhs) and _eq(self.y, _rmul(self.x.?, 0))) {
+            if (eq(self, rhs) and _eq(y1, _rmul(x1, 0))) {
                 return .{ .x = null, .y = null, .a = self.a, .b = self.b };
             }
 
@@ -133,9 +133,9 @@ pub fn Point(comptime T: type) type {
             // s=(3*x1**2+a)/(2*y1)
             // x3=s**2-2*x1
             // y3=s*(x1-x3)-y1
-            const s = _div(_add(_mul(_rmul(self.x.?, 3), self.x.?), self.a), _rmul(self.y.?, 2));
-            const x3 = _sub(_mul(s, s), _rmul(self.x.?, 2));
-            const y3 = _sub(_mul(s, _sub(self.x.?, x3)), self.y.?);
+            const s = _div(_add(_mul(_rmul(x1, 3), x1), self.a), _rmul(y1, 2));
+            const x3 = _sub(_mul(s, s), _rmul(x1, 2));
+            const y3 = _sub(_mul(s, _sub(x1, x3)), y1);
             return .{ .x = x3, .y = y3, .a = self.a, .b = self.b };
         }
 
@@ -166,4 +166,31 @@ test "point_on_curve" {
     const a = Point(i32).init(3, -7, 5, 7);
     const b = Point(i32).init(18, 77, 5, 7);
     std.debug.print("{any} {any}", .{ a.x, b.x });
+}
+
+//test "point_on_curve_panic" {
+//    const a = Point(i32).init(-2, 4, 5, 7);
+//    std.debug.print("{any}", .{a});
+//}
+
+test "add0" {
+    const a = Point(i32).init(null, null, 5, 7);
+    const b = Point(i32).init(2, 5, 5, 7);
+    const c = Point(i32).init(2, -5, 5, 7);
+    try std.testing.expect(a.add(b).eq(b));
+    try std.testing.expect(b.add(a).eq(b));
+    try std.testing.expect(b.add(c).eq(a));
+}
+
+test "add1" {
+    const a = Point(i32).init(3, 7, 5, 7);
+    const b = Point(i32).init(-1, -1, 5, 7);
+    const c = Point(i32).init(2, -5, 5, 7);
+    try std.testing.expect(a.add(b).eq(c));
+}
+
+test "add2" {
+    const a = Point(i32).init(-1, 1, 5, 7);
+    const b = Point(i32).init(18, -77, 5, 7);
+    try std.testing.expect(a.add(a).eq(b));
 }
