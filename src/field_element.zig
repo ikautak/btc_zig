@@ -1,4 +1,5 @@
 const std = @import("std");
+const testing = std.testing;
 
 // field element struct with generic num and prime
 pub fn FieldElement(comptime T: type) type {
@@ -74,10 +75,10 @@ test "eq" {
     const a = FieldElement(u64).init(7, 13);
     const b = FieldElement(u64).init(6, 13);
     const c = FieldElement(u64).init(6, 13);
-    try std.testing.expect(!a.eq(b));
-    try std.testing.expect(a.ne(b));
-    try std.testing.expect(b.eq(c));
-    try std.testing.expect(!b.ne(c));
+    try testing.expect(!a.eq(b));
+    try testing.expect(a.ne(b));
+    try testing.expect(b.eq(c));
+    try testing.expect(!b.ne(c));
 }
 
 test "add" {
@@ -85,14 +86,14 @@ test "add" {
         const a = FieldElement(u64).init(2, 31);
         const b = FieldElement(u64).init(15, 31);
         const c = FieldElement(u64).init(17, 31);
-        try std.testing.expect(a.add(b).eq(c));
+        try testing.expect(a.add(b).eq(c));
     }
 
     {
         const a = FieldElement(u64).init(17, 31);
         const b = FieldElement(u64).init(21, 31);
         const c = FieldElement(u64).init(7, 31);
-        try std.testing.expect(a.add(b).eq(c));
+        try testing.expect(a.add(b).eq(c));
     }
 }
 
@@ -101,14 +102,14 @@ test "sub" {
         const a = FieldElement(u32).init(29, 31);
         const b = FieldElement(u32).init(4, 31);
         const c = FieldElement(u32).init(25, 31);
-        try std.testing.expect(a.sub(b).eq(c));
+        try testing.expect(a.sub(b).eq(c));
     }
 
     {
         const a = FieldElement(u32).init(15, 31);
         const b = FieldElement(u32).init(30, 31);
         const c = FieldElement(u32).init(16, 31);
-        try std.testing.expect(a.sub(b).eq(c));
+        try testing.expect(a.sub(b).eq(c));
     }
 }
 
@@ -116,27 +117,27 @@ test "mul" {
     const a = FieldElement(u32).init(24, 31);
     const b = FieldElement(u32).init(19, 31);
     const c = FieldElement(u32).init(22, 31);
-    try std.testing.expect(a.mul(b).eq(c));
+    try testing.expect(a.mul(b).eq(c));
 }
 
 test "rmul" {
     const a = FieldElement(u32).init(24, 31);
     const b = 2;
-    try std.testing.expect(a.rmul(b).eq(a.add(a)));
+    try testing.expect(a.rmul(b).eq(a.add(a)));
 }
 
 test "pow" {
     {
         const a = FieldElement(u32).init(17, 31);
         const b = FieldElement(u32).init(15, 31);
-        try std.testing.expect(a.pow(3).eq(b));
+        try testing.expect(a.pow(3).eq(b));
     }
 
     {
         const a = FieldElement(u32).init(5, 31);
         const b = FieldElement(u32).init(18, 31);
         const c = FieldElement(u32).init(16, 31);
-        try std.testing.expect(a.pow(5).mul(b).eq(c));
+        try testing.expect(a.pow(5).mul(b).eq(c));
     }
 }
 
@@ -145,13 +146,13 @@ test "div" {
         const a = FieldElement(u32).init(3, 31);
         const b = FieldElement(u32).init(24, 31);
         const c = FieldElement(u32).init(4, 31);
-        try std.testing.expect(a.div(b).eq(c));
+        try testing.expect(a.div(b).eq(c));
     }
 
     {
         const a = FieldElement(u32).init(1, 31);
         const b = FieldElement(u32).init(17, 31);
         const c = FieldElement(u32).init(29, 31);
-        try std.testing.expect(a.div(b).div(b).div(b).eq(c));
+        try testing.expect(a.div(b).div(b).div(b).eq(c));
     }
 }

@@ -1,4 +1,5 @@
 const std = @import("std");
+const testing = std.testing;
 
 pub fn Point(comptime T: type) type {
     return struct {
@@ -159,7 +160,7 @@ pub fn Point(comptime T: type) type {
 test "ne" {
     const a = Point(i32).init(3, -7, 5, 7);
     const b = Point(i32).init(18, 77, 5, 7);
-    try std.testing.expect(a.ne(b));
+    try testing.expect(a.ne(b));
 }
 
 test "point_on_curve" {
@@ -177,20 +178,20 @@ test "add0" {
     const a = Point(i32).init(null, null, 5, 7);
     const b = Point(i32).init(2, 5, 5, 7);
     const c = Point(i32).init(2, -5, 5, 7);
-    try std.testing.expect(a.add(b).eq(b));
-    try std.testing.expect(b.add(a).eq(b));
-    try std.testing.expect(b.add(c).eq(a));
+    try testing.expect(a.add(b).eq(b));
+    try testing.expect(b.add(a).eq(b));
+    try testing.expect(b.add(c).eq(a));
 }
 
 test "add1" {
     const a = Point(i32).init(3, 7, 5, 7);
     const b = Point(i32).init(-1, -1, 5, 7);
     const c = Point(i32).init(2, -5, 5, 7);
-    try std.testing.expect(a.add(b).eq(c));
+    try testing.expect(a.add(b).eq(c));
 }
 
 test "add2" {
     const a = Point(i32).init(-1, 1, 5, 7);
     const b = Point(i32).init(18, -77, 5, 7);
-    try std.testing.expect(a.add(a).eq(b));
+    try testing.expect(a.add(a).eq(b));
 }
