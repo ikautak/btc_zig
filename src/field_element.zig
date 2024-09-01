@@ -72,9 +72,9 @@ pub fn FieldElement(comptime T: type) type {
 }
 
 test "eq" {
-    const a = FieldElement(u64).init(7, 13);
-    const b = FieldElement(u64).init(6, 13);
-    const c = FieldElement(u64).init(6, 13);
+    const a = FieldElement(u32).init(7, 13);
+    const b = FieldElement(u32).init(6, 13);
+    const c = FieldElement(u32).init(6, 13);
     try testing.expect(!a.eq(b));
     try testing.expect(a.ne(b));
     try testing.expect(b.eq(c));
@@ -83,16 +83,16 @@ test "eq" {
 
 test "add" {
     {
-        const a = FieldElement(u64).init(2, 31);
-        const b = FieldElement(u64).init(15, 31);
-        const c = FieldElement(u64).init(17, 31);
+        const a = FieldElement(u32).init(2, 31);
+        const b = FieldElement(u32).init(15, 31);
+        const c = FieldElement(u32).init(17, 31);
         try testing.expect(a.add(b).eq(c));
     }
 
     {
-        const a = FieldElement(u64).init(17, 31);
-        const b = FieldElement(u64).init(21, 31);
-        const c = FieldElement(u64).init(7, 31);
+        const a = FieldElement(u32).init(17, 31);
+        const b = FieldElement(u32).init(21, 31);
+        const c = FieldElement(u32).init(7, 31);
         try testing.expect(a.add(b).eq(c));
     }
 }
