@@ -1,6 +1,20 @@
 const std = @import("std");
-const FieldElement = @import("field_element");
-const Point = @import("point");
+const testing = std.testing;
+const FieldElement = @import("field_element.zig");
+const Point = @import("point.zig");
+
+pub fn modpow(comptime T: type, x: T, exp: T, m: T) T {
+    var result: T = 1;
+    while (exp > 0) {
+        if (exp % 2 == 1) {
+            result = (result * x) % m;
+        }
+        x = (x * x) % m;
+        exp /= 2;
+    }
+
+    return result;
+}
 
 const A: u256 = 0;
 const B: u256 = 7;
