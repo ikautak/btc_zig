@@ -11,7 +11,7 @@ pub fn FieldElement(comptime T: type) type {
             if (num >= prime) {
                 @panic("Num not in field range 0 to prime");
             }
-            return .{ .num = num, .prime = prime };
+            return @This(){ .num = num, .prime = prime };
         }
 
         pub fn eq(self: @This(), rhs: @This()) bool {
@@ -26,7 +26,7 @@ pub fn FieldElement(comptime T: type) type {
             if (self.prime != rhs.prime) {
                 @panic("Cannot add two numbers in different fields");
             }
-            return .{ .num = (self.num + rhs.num) % self.prime, .prime = self.prime };
+            return @This(){ .num = (self.num + rhs.num) % self.prime, .prime = self.prime };
         }
 
         pub fn sub(self: @This(), rhs: @This()) @This() {
@@ -34,14 +34,14 @@ pub fn FieldElement(comptime T: type) type {
                 @panic("Cannot subtract two numbers in different fields");
             }
             const num = if (self.num >= rhs.num) self.num - rhs.num else self.prime - (rhs.num - self.num);
-            return .{ .num = num, .prime = self.prime };
+            return @This(){ .num = num, .prime = self.prime };
         }
 
         pub fn mul(self: @This(), rhs: @This()) @This() {
             if (self.prime != rhs.prime) {
                 @panic("Cannot multiply two numbers in different fields");
             }
-            return .{ .num = (self.num * rhs.num) % self.prime, .prime = self.prime };
+            return @This(){ .num = (self.num * rhs.num) % self.prime, .prime = self.prime };
         }
 
         pub fn pow(self: @This(), exp: T) @This() {
@@ -66,7 +66,7 @@ pub fn FieldElement(comptime T: type) type {
         }
 
         pub fn rmul(self: @This(), coefficient: anytype) @This() {
-            return .{ .num = (self.num * coefficient) % self.prime, .prime = self.prime };
+            return @This(){ .num = (self.num * coefficient) % self.prime, .prime = self.prime };
         }
     };
 }

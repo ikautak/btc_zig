@@ -79,7 +79,7 @@ pub fn Point(comptime T: type) type {
                 @panic("not on the curve");
             }
 
-            return .{ .x = x, .y = y, .a = a, .b = b };
+            return @This(){ .x = x, .y = y, .a = a, .b = b };
         }
 
         pub fn eq(self: @This(), rhs: @This()) bool {
@@ -109,7 +109,7 @@ pub fn Point(comptime T: type) type {
 
             // Case 1: x is equal and y is not equal -> Infinity
             if (_eq(x1, x2) and _ne(y1, y2)) {
-                return .{ .x = null, .y = null, .a = self.a, .b = self.b };
+                return @This(){ .x = null, .y = null, .a = self.a, .b = self.b };
             }
 
             // Case 2: x is not equal
@@ -121,12 +121,12 @@ pub fn Point(comptime T: type) type {
                 const s = _div(_sub(y2, y1), _sub(x2, x1));
                 const x3 = _sub(_sub(_mul(s, s), x1), x2);
                 const y3 = _sub(_mul(s, _sub(x1, x3)), y1);
-                return .{ .x = x3, .y = y3, .a = self.a, .b = self.b };
+                return @This(){ .x = x3, .y = y3, .a = self.a, .b = self.b };
             }
 
             // Case 4: tangent to vertical line -> Infinity
             if (eq(self, rhs) and _eq(y1, _rmul(x1, 0))) {
-                return .{ .x = null, .y = null, .a = self.a, .b = self.b };
+                return @This(){ .x = null, .y = null, .a = self.a, .b = self.b };
             }
 
             // Case 3: self == other
@@ -137,7 +137,7 @@ pub fn Point(comptime T: type) type {
             const s = _div(_add(_mul(_rmul(x1, 3), x1), self.a), _rmul(y1, 2));
             const x3 = _sub(_mul(s, s), _rmul(x1, 2));
             const y3 = _sub(_mul(s, _sub(x1, x3)), y1);
-            return .{ .x = x3, .y = y3, .a = self.a, .b = self.b };
+            return @This(){ .x = x3, .y = y3, .a = self.a, .b = self.b };
         }
 
         pub fn rmul(self: @This(), coefficient: anytype) @This() {
