@@ -8,6 +8,10 @@ pub fn FieldElement(comptime T: type) type {
         prime: T,
 
         pub fn init(num: T, prime: T) @This() {
+            comptime if (@bitSizeOf(T) > 256) {
+                @compileError("The type size cannot be larger than u256.");
+            };
+
             if (num >= prime) {
                 @panic("Num not in field range 0 to prime");
             }
@@ -26,7 +30,11 @@ pub fn FieldElement(comptime T: type) type {
             if (self.prime != rhs.prime) {
                 @panic("Cannot add two numbers in different fields");
             }
-            return @This(){ .num = (self.num + rhs.num) % self.prime, .prime = self.prime };
+            const n1: u512 = @intCast(self.num);
+            const n2: u512 = @intCast(rhs.num);
+            const n3: u512 = (n1 + n2) % self.prime;
+            const n: T = @truncate(n3);
+            return @This(){ .num = n % self.prime, .prime = self.prime };
         }
 
         pub fn sub(self: @This(), rhs: @This()) @This() {
@@ -41,7 +49,11 @@ pub fn FieldElement(comptime T: type) type {
             if (self.prime != rhs.prime) {
                 @panic("Cannot multiply two numbers in different fields");
             }
-            return @This(){ .num = (self.num * rhs.num) % self.prime, .prime = self.prime };
+            const n1: u512 = @intCast(self.num);
+            const n2: u512 = @intCast(rhs.num);
+            const n3: u512 = (n1 * n2) % self.prime;
+            const n: T = @truncate(n3);
+            return @This(){ .num = n, .prime = self.prime };
         }
 
         pub fn pow(self: @This(), exp: T) @This() {
@@ -66,7 +78,11 @@ pub fn FieldElement(comptime T: type) type {
         }
 
         pub fn rmul(self: @This(), coefficient: anytype) @This() {
-            return @This(){ .num = (self.num * coefficient) % self.prime, .prime = self.prime };
+            const n1: u512 = @intCast(self.num);
+            const coef: u512 = @intCast(coefficient);
+            const n_: u512 = (n1 * coef) % self.prime;
+            const n: T = @truncate(n_);
+            return @This(){ .num = n, .prime = self.prime };
         }
     };
 }

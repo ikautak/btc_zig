@@ -145,7 +145,7 @@ pub fn Point(comptime T: type) type {
             var current = self;
             var result = Point(T).init(null, null, self.a, self.b);
             while (coef > 0) {
-                if (coef & 1) {
+                if (coef & 1 > 0) {
                     result = result.add(current);
                 }
                 current = current.add(current);
