@@ -1,7 +1,7 @@
 const std = @import("std");
 const testing = std.testing;
-const FieldElement = @import("field_element.zig");
-const Point = @import("point.zig");
+const FieldElement = @import("field_element.zig").FieldElement;
+const Point = @import("point.zig").Point;
 
 pub fn modmul(comptime T: type, a: T, b: T, m: T) T {
     comptime if (@bitSizeOf(T) > 256) {
@@ -32,10 +32,10 @@ pub fn modpow(comptime T: type, x: T, exp: T, m: T) T {
 
 const A: u256 = 0;
 const B: u256 = 7;
-const P: u256 = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f;
-const N: u256 = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141;
+pub const P: u256 = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f;
+pub const N: u256 = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141;
 
-const S256Field = FieldElement.FieldElement(u256);
+const S256Field = FieldElement(u256);
 
 pub fn Signature() type {
     return struct {
@@ -50,14 +50,14 @@ pub fn Signature() type {
 
 pub fn S256Point() type {
     return struct {
-        point: Point.Point(S256Field),
+        point: Point(S256Field),
 
         pub fn init(x: u256, y: u256) @This() {
             const a = S256Field.init(A, P);
             const b = S256Field.init(B, P);
             const x_ = S256Field.init(x, P);
             const y_ = S256Field.init(y, P);
-            return @This(){ .point = Point.Point(S256Field).init(x_, y_, a, b) };
+            return @This(){ .point = Point(S256Field).init(x_, y_, a, b) };
         }
 
         pub fn mul(self: @This(), coefficient: u256) @This() {
@@ -79,7 +79,57 @@ pub fn S256Point() type {
     };
 }
 
-const G = S256Point().init(0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798, 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8);
+pub const G = S256Point().init(0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798, 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8);
+
+test "on_curve" {
+    const prime: u32 = 223;
+    const a = FieldElement(u32).init(0, prime);
+    const b = FieldElement(u32).init(7, prime);
+
+    const valid_points: [3][2]u32 = .{
+        .{ 192, 105 },
+        .{ 17, 56 },
+        .{ 1, 193 },
+    };
+
+    for (valid_points) |point| {
+        //
+        const x: ?FieldElement(u32) = FieldElement(u32).init(point[0], prime);
+        const y: ?FieldElement(u32) = FieldElement(u32).init(point[1], prime);
+        const p = Point(FieldElement(u32)).init(x, y, a, b);
+        try testing.expectEqual(p.x.?.num, point[0]);
+    }
+}
+
+test "ecc_add" {
+    const prime: u32 = 223;
+    const a = FieldElement(u32).init(0, prime);
+    const b = FieldElement(u32).init(7, prime);
+
+    const additions: [3][6]u32 = .{
+        // x1, y1, x2, y2, x3, y3
+        .{ 192, 105, 17, 56, 170, 142 },
+        .{ 47, 71, 117, 141, 60, 139 },
+        .{ 143, 98, 76, 66, 47, 71 },
+    };
+
+    for (additions) |add| {
+        //
+        const x1 = FieldElement(u32).init(add[0], prime);
+        const y1 = FieldElement(u32).init(add[1], prime);
+        const p1 = Point(FieldElement(u32)).init(x1, y1, a, b);
+
+        const x2 = FieldElement(u32).init(add[2], prime);
+        const y2 = FieldElement(u32).init(add[3], prime);
+        const p2 = Point(FieldElement(u32)).init(x2, y2, a, b);
+
+        const x3 = FieldElement(u32).init(add[4], prime);
+        const y3 = FieldElement(u32).init(add[5], prime);
+        const p3 = Point(FieldElement(u32)).init(x3, y3, a, b);
+
+        try testing.expect(p1.add(p2).eq(p3));
+    }
+}
 
 test "order" {
     //@import("std").testing.refAllDeclsRecursive(@This());
@@ -87,7 +137,7 @@ test "order" {
     try std.testing.expectEqual(null, s256point.point.x);
 }
 
-test "pubpoint" {
+test "pub_point" {
     // secret, x, y
     const points: [4][3]u256 = .{
         .{ 7, 0x5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc, 0x6aebca40ba255960a3178d6d861a54dba813d0b813fde7b5a5082628087264da },
