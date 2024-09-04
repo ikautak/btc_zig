@@ -30,10 +30,12 @@ pub fn FieldElement(comptime T: type) type {
             if (self.prime != rhs.prime) {
                 @panic("Cannot add two numbers in different fields");
             }
-            const n1: u512 = @intCast(self.num);
-            const n2: u512 = @intCast(rhs.num);
-            const n3: u512 = (n1 + n2) % self.prime;
-            const n: T = @truncate(n3);
+            const n: T = modadd: {
+                const n1: u512 = @intCast(self.num);
+                const n2: u512 = @intCast(rhs.num);
+                const n3: u512 = (n1 + n2) % self.prime;
+                break :modadd @truncate(n3);
+            };
             return @This(){ .num = n % self.prime, .prime = self.prime };
         }
 
@@ -49,10 +51,12 @@ pub fn FieldElement(comptime T: type) type {
             if (self.prime != rhs.prime) {
                 @panic("Cannot multiply two numbers in different fields");
             }
-            const n1: u512 = @intCast(self.num);
-            const n2: u512 = @intCast(rhs.num);
-            const n3: u512 = (n1 * n2) % self.prime;
-            const n: T = @truncate(n3);
+            const n: T = modmul: {
+                const n1: u512 = @intCast(self.num);
+                const n2: u512 = @intCast(rhs.num);
+                const n3: u512 = (n1 * n2) % self.prime;
+                break :modmul @truncate(n3);
+            };
             return @This(){ .num = n, .prime = self.prime };
         }
 
@@ -78,10 +82,12 @@ pub fn FieldElement(comptime T: type) type {
         }
 
         pub fn rmul(self: @This(), coefficient: anytype) @This() {
-            const n1: u512 = @intCast(self.num);
-            const coef: u512 = @intCast(coefficient);
-            const n_: u512 = (n1 * coef) % self.prime;
-            const n: T = @truncate(n_);
+            const n: T = modmul: {
+                const n1: u512 = @intCast(self.num);
+                const n2: u512 = @intCast(coefficient);
+                const n3: u512 = (n1 * n2) % self.prime;
+                break :modmul @truncate(n3);
+            };
             return @This(){ .num = n, .prime = self.prime };
         }
     };
