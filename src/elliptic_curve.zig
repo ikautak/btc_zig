@@ -2,6 +2,7 @@ const std = @import("std");
 const testing = std.testing;
 const FieldElement = @import("field_element.zig").FieldElement;
 const Point = @import("point.zig").Point;
+const native_endian = @import("builtin").target.cpu.arch.endian();
 
 pub fn modmul(comptime T: type, a: T, b: T, m: T) T {
     comptime if (@bitSizeOf(T) > 256) {
@@ -73,9 +74,65 @@ pub fn S256Point() type {
             return total.x.?.num == sig.r;
         }
 
-        //pub fn sec(self: @This(), compressed: bool) {
-        //
-        //}
+        pub fn sec(self: @This(), compressed: bool) ![]u8 {
+            const allocator = std.heap.page_allocator;
+            var out = std.ArrayList(u8).init(allocator);
+
+            if (compressed) {
+                if (self.point.y.?.num % 2 == 0) {
+                    try out.append(0x02);
+                } else {
+                    try out.append(0x03);
+                }
+
+                const x = endian: {
+                    switch (native_endian) {
+                        .big => {
+                            break :endian self.point.x.?.num;
+                        },
+                        .little => {
+                            break :endian @byteSwap(self.point.x.?.num);
+                        },
+                    }
+                };
+
+                for (std.mem.toBytes(x)) |byte| {
+                    try out.append(byte);
+                }
+            } else {
+                try out.append(0x04);
+
+                const x = endian: {
+                    switch (native_endian) {
+                        .big => {
+                            break :endian self.point.x.?.num;
+                        },
+                        .little => {
+                            break :endian @byteSwap(self.point.x.?.num);
+                        },
+                    }
+                };
+                const y = endian: {
+                    switch (native_endian) {
+                        .big => {
+                            break :endian self.point.y.?.num;
+                        },
+                        .little => {
+                            break :endian @byteSwap(self.point.y.?.num);
+                        },
+                    }
+                };
+
+                for (std.mem.toBytes(x)) |byte| {
+                    try out.append(byte);
+                }
+                for (std.mem.toBytes(y)) |byte| {
+                    try out.append(byte);
+                }
+            }
+
+            return out.toOwnedSlice();
+        }
     };
 }
 
@@ -93,13 +150,32 @@ test "on_curve" {
     };
 
     for (valid_points) |point| {
-        //
         const x: ?FieldElement(u32) = FieldElement(u32).init(point[0], prime);
         const y: ?FieldElement(u32) = FieldElement(u32).init(point[1], prime);
         const p = Point(FieldElement(u32)).init(x, y, a, b);
         try testing.expectEqual(p.x.?.num, point[0]);
     }
 }
+
+//test "on_curve_panic0" {
+//    const prime: u32 = 223;
+//    const a = FieldElement(u32).init(0, prime);
+//    const b = FieldElement(u32).init(7, prime);
+//    const x = FieldElement(u32).init(200, prime);
+//    const y = FieldElement(u32).init(119, prime);
+//    const p = Point(FieldElement(u32)).init(x, y, a, b);
+//    _ = p;
+//}
+
+//test "on_curve_panic1" {
+//    const prime: u32 = 223;
+//    const a = FieldElement(u32).init(0, prime);
+//    const b = FieldElement(u32).init(7, prime);
+//    const x = FieldElement(u32).init(42, prime);
+//    const y = FieldElement(u32).init(99, prime);
+//    const p = Point(FieldElement(u32)).init(x, y, a, b);
+//    _ = p;
+//}
 
 test "ecc_add" {
     const prime: u32 = 223;
@@ -114,7 +190,6 @@ test "ecc_add" {
     };
 
     for (additions) |add| {
-        //
         const x1 = FieldElement(u32).init(add[0], prime);
         const y1 = FieldElement(u32).init(add[1], prime);
         const p1 = Point(FieldElement(u32)).init(x1, y1, a, b);
@@ -131,13 +206,53 @@ test "ecc_add" {
     }
 }
 
-test "order" {
+test "ecc_scalar_mul" {
+    const prime: u32 = 223;
+    const a = FieldElement(u32).init(0, prime);
+    const b = FieldElement(u32).init(7, prime);
+    const multiplications: [5][5]u32 = .{
+        // (coefficient, x1, y1, x2, y2)
+        .{ 2, 192, 105, 49, 71 },
+        .{ 2, 143, 98, 64, 168 },
+        .{ 2, 47, 71, 36, 111 },
+        .{ 4, 47, 71, 194, 51 },
+        .{ 8, 47, 71, 116, 55 },
+    };
+
+    for (multiplications) |multi| {
+        const x1 = FieldElement(u32).init(multi[1], prime);
+        const y1 = FieldElement(u32).init(multi[2], prime);
+        const p1 = Point(FieldElement(u32)).init(x1, y1, a, b);
+
+        const x2 = FieldElement(u32).init(multi[3], prime);
+        const y2 = FieldElement(u32).init(multi[4], prime);
+        const p2 = Point(FieldElement(u32)).init(x2, y2, a, b);
+
+        try testing.expect(p1.rmul(multi[0]).eq(p2));
+    }
+}
+
+test "ecc_scalar_mul_none" {
+    const prime: u32 = 223;
+    const a = FieldElement(u32).init(0, prime);
+    const b = FieldElement(u32).init(7, prime);
+    const s: u32 = 21;
+
+    const x1 = FieldElement(u32).init(47, prime);
+    const y1 = FieldElement(u32).init(71, prime);
+    const p1 = Point(FieldElement(u32)).init(x1, y1, a, b);
+    const p2 = Point(FieldElement(u32)).init(null, null, a, b);
+
+    try testing.expect(p1.rmul(s).eq(p2));
+}
+
+test "s256_order" {
     //@import("std").testing.refAllDeclsRecursive(@This());
     const s256point = G.mul(N);
     try std.testing.expectEqual(null, s256point.point.x);
 }
 
-test "pub_point" {
+test "s256_pub_point" {
     // secret, x, y
     const points: [4][3]u256 = .{
         .{ 7, 0x5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc, 0x6aebca40ba255960a3178d6d861a54dba813d0b813fde7b5a5082628087264da },
@@ -152,7 +267,7 @@ test "pub_point" {
     }
 }
 
-test "verify" {
+test "s256_verify" {
     const point = S256Point().init(0x887387e452b8eacc4acfde10d9aaf7f6d9a0f975aabb10d006e4da568744d06c, 0x61de6d95231cd89026e286df3b6ae4a894a3378e393e93a0f45b666329a0ae34);
     {
         const z: u256 = 0xec208baa0fc1c19f708a9ca96fdeff3ac3f230bb4a7ba4aede4942ad003c0f60;
@@ -168,4 +283,60 @@ test "verify" {
         const sig = Signature().init(r, s);
         try testing.expect(point.verify(z, sig));
     }
+}
+
+test "s256_sec" {
+    // case 1
+    {
+        const coefficient: u32 = std.math.pow(u32, 999, 3);
+        const point = G.mul(coefficient);
+
+        {
+            const sec = point.sec(false) catch |err| {
+                std.debug.panic("failed sec {}", .{err});
+            };
+            var buf: [256]u8 = undefined;
+            const uncompressed = "049d5ca49670cbe4c3bfa84c96a8c87df086c6ea6a24ba6b809c9de234496808d56fa15cc7f3d38cda98dee2419f415b7513dde1301f8643cd9245aea7f3f911f9";
+            const uncompressed_u8 = try std.fmt.hexToBytes(&buf, uncompressed);
+            try testing.expectEqualSlices(u8, sec, uncompressed_u8);
+        }
+        {
+            const sec = point.sec(true) catch |err| {
+                std.debug.panic("failed sec {}", .{err});
+            };
+            var buf: [256]u8 = undefined;
+            const compressed = "039d5ca49670cbe4c3bfa84c96a8c87df086c6ea6a24ba6b809c9de234496808d5";
+            const compressed_u8 = try std.fmt.hexToBytes(&buf, compressed);
+            try testing.expectEqualSlices(u8, sec, compressed_u8);
+        }
+    }
+
+    //        // case 2
+    //        let coefficient = U512::from(123u32);
+    //        let point = G.mul(coefficient);
+    //
+    //        let sec = point.sec(false);
+    //        let uncompressed = "04a598a8030da6d86c6bc7f2f5144ea549d28211ea58faa70ebf4c1e665c1fe9b5204b5d6f84822c307e4b4a7140737aec23fc63b65b35f86a10026dbd2d864e6b";
+    //        let uncompressed = hex::decode(uncompressed).unwrap();
+    //        assert_eq!(sec, uncompressed);
+    //
+    //        let sec = point.sec(true);
+    //        let compressed = "03a598a8030da6d86c6bc7f2f5144ea549d28211ea58faa70ebf4c1e665c1fe9b5";
+    //        let compressed = hex::decode(compressed).unwrap();
+    //        assert_eq!(sec, compressed);
+    //
+    //        // case 3
+    //        let coefficient = U512::from(42424242u32);
+    //        let point = G.mul(coefficient);
+    //
+    //        let sec = point.sec(false);
+    //        let uncompressed = "04aee2e7d843f7430097859e2bc603abcc3274ff8169c1a469fee0f20614066f8e21ec53f40efac47ac1c5211b2123527e0e9b57ede790c4da1e72c91fb7da54a3";
+    //        let uncompressed = hex::decode(uncompressed).unwrap();
+    //        assert_eq!(sec, uncompressed);
+    //
+    //        let sec = point.sec(true);
+    //        let compressed = "03aee2e7d843f7430097859e2bc603abcc3274ff8169c1a469fee0f20614066f8e";
+    //        let compressed = hex::decode(compressed).unwrap();
+    //        assert_eq!(sec, compressed);
+
 }
