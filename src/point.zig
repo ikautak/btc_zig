@@ -11,7 +11,15 @@ pub fn Point(comptime T: type) type {
         fn _eq(a: ?T, b: ?T) bool {
             return switch (@typeInfo(T)) {
                 .Int, .Float => a == b,
-                .Struct => @field(T, "eq")(a.?, b.?),
+                .Struct => {
+                    if (a == null and b == null) {
+                        return true;
+                    } else if (a == null or b == null) {
+                        return false;
+                    } else {
+                        return a.?.eq(b.?);
+                    }
+                },
                 else => @compileError("unsupported type"),
             };
         }
