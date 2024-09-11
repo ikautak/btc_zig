@@ -87,12 +87,8 @@ pub fn S256Point() type {
 
                 const x = endian: {
                     switch (native_endian) {
-                        .big => {
-                            break :endian self.point.x.?.num;
-                        },
-                        .little => {
-                            break :endian @byteSwap(self.point.x.?.num);
-                        },
+                        .big => break :endian self.point.x.?.num,
+                        .little => break :endian @byteSwap(self.point.x.?.num),
                     }
                 };
 
@@ -104,22 +100,14 @@ pub fn S256Point() type {
 
                 const x = endian: {
                     switch (native_endian) {
-                        .big => {
-                            break :endian self.point.x.?.num;
-                        },
-                        .little => {
-                            break :endian @byteSwap(self.point.x.?.num);
-                        },
+                        .big => break :endian self.point.x.?.num,
+                        .little => break :endian @byteSwap(self.point.x.?.num),
                     }
                 };
                 const y = endian: {
                     switch (native_endian) {
-                        .big => {
-                            break :endian self.point.y.?.num;
-                        },
-                        .little => {
-                            break :endian @byteSwap(self.point.y.?.num);
-                        },
+                        .big => break :endian self.point.y.?.num,
+                        .little => break :endian @byteSwap(self.point.y.?.num),
                     }
                 };
 
@@ -311,32 +299,51 @@ test "s256_sec" {
         }
     }
 
-    //        // case 2
-    //        let coefficient = U512::from(123u32);
-    //        let point = G.mul(coefficient);
-    //
-    //        let sec = point.sec(false);
-    //        let uncompressed = "04a598a8030da6d86c6bc7f2f5144ea549d28211ea58faa70ebf4c1e665c1fe9b5204b5d6f84822c307e4b4a7140737aec23fc63b65b35f86a10026dbd2d864e6b";
-    //        let uncompressed = hex::decode(uncompressed).unwrap();
-    //        assert_eq!(sec, uncompressed);
-    //
-    //        let sec = point.sec(true);
-    //        let compressed = "03a598a8030da6d86c6bc7f2f5144ea549d28211ea58faa70ebf4c1e665c1fe9b5";
-    //        let compressed = hex::decode(compressed).unwrap();
-    //        assert_eq!(sec, compressed);
-    //
-    //        // case 3
-    //        let coefficient = U512::from(42424242u32);
-    //        let point = G.mul(coefficient);
-    //
-    //        let sec = point.sec(false);
-    //        let uncompressed = "04aee2e7d843f7430097859e2bc603abcc3274ff8169c1a469fee0f20614066f8e21ec53f40efac47ac1c5211b2123527e0e9b57ede790c4da1e72c91fb7da54a3";
-    //        let uncompressed = hex::decode(uncompressed).unwrap();
-    //        assert_eq!(sec, uncompressed);
-    //
-    //        let sec = point.sec(true);
-    //        let compressed = "03aee2e7d843f7430097859e2bc603abcc3274ff8169c1a469fee0f20614066f8e";
-    //        let compressed = hex::decode(compressed).unwrap();
-    //        assert_eq!(sec, compressed);
+    // case 2
+    {
+        const coefficient: u32 = 123;
+        const point = G.mul(coefficient);
+        {
+            const sec = point.sec(false) catch |err| {
+                std.debug.panic("failed sec {}", .{err});
+            };
+            var buf: [256]u8 = undefined;
+            const uncompressed = "04a598a8030da6d86c6bc7f2f5144ea549d28211ea58faa70ebf4c1e665c1fe9b5204b5d6f84822c307e4b4a7140737aec23fc63b65b35f86a10026dbd2d864e6b";
+            const uncompressed_u8 = try std.fmt.hexToBytes(&buf, uncompressed);
+            try testing.expectEqualSlices(u8, sec, uncompressed_u8);
+        }
+        {
+            const sec = point.sec(true) catch |err| {
+                std.debug.panic("failed sec {}", .{err});
+            };
+            var buf: [256]u8 = undefined;
+            const compressed = "03a598a8030da6d86c6bc7f2f5144ea549d28211ea58faa70ebf4c1e665c1fe9b5";
+            const compressed_u8 = try std.fmt.hexToBytes(&buf, compressed);
+            try testing.expectEqualSlices(u8, sec, compressed_u8);
+        }
+    }
 
+    // case 3
+    {
+        const coefficient: u32 = 42424242;
+        const point = G.mul(coefficient);
+        {
+            const sec = point.sec(false) catch |err| {
+                std.debug.panic("failed sec {}", .{err});
+            };
+            var buf: [256]u8 = undefined;
+            const uncompressed = "04aee2e7d843f7430097859e2bc603abcc3274ff8169c1a469fee0f20614066f8e21ec53f40efac47ac1c5211b2123527e0e9b57ede790c4da1e72c91fb7da54a3";
+            const uncompressed_u8 = try std.fmt.hexToBytes(&buf, uncompressed);
+            try testing.expectEqualSlices(u8, sec, uncompressed_u8);
+        }
+        {
+            const sec = point.sec(true) catch |err| {
+                std.debug.panic("failed sec {}", .{err});
+            };
+            var buf: [256]u8 = undefined;
+            const compressed = "03aee2e7d843f7430097859e2bc603abcc3274ff8169c1a469fee0f20614066f8e";
+            const compressed_u8 = try std.fmt.hexToBytes(&buf, compressed);
+            try testing.expectEqualSlices(u8, sec, compressed_u8);
+        }
+    }
 }
