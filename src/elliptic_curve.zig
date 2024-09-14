@@ -31,12 +31,36 @@ pub fn modpow(comptime T: type, x: T, exp: T, m: T) T {
     return result;
 }
 
+pub fn to_big_endian(x: anytype) @TypeOf(x) {
+    switch (native_endian) {
+        .big => return x,
+        .little => return @byteSwap(x),
+    }
+}
+
 const A: u256 = 0;
 const B: u256 = 7;
 pub const P: u256 = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f;
 pub const N: u256 = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141;
 
 const S256Field = FieldElement(u256);
+
+fn prepend(list: *std.ArrayList(u8), x: u8) !void {
+    // Resize the list to make space for the new element
+    try list.ensureTotalCapacity(list.items.len + 1);
+
+    // Shift elements to the right
+    var i: usize = 0;
+    const len = list.items.len;
+    while (i < len - 1) : (i += 1) {
+        std.debug.print("{any} {any}\n", .{ i, list.items[i] });
+        list.items[i + 1] = list.items[i];
+    }
+
+    // Insert the new element at the front
+    list.items[0] = x;
+    list.items.len += 1;
+}
 
 pub fn Signature() type {
     return struct {
@@ -46,6 +70,71 @@ pub fn Signature() type {
         pub fn init(r: u256, s: u256) @This() {
             return .{ .r = r, .s = s };
         }
+
+        pub fn der(self: @This()) ![]u8 {
+            const allocator = std.heap.page_allocator;
+
+            // r
+            var rbin = std.ArrayList(u8).init(allocator);
+            defer rbin.deinit();
+            const r = to_big_endian(self.r);
+            for (std.mem.toBytes(r)) |byte| {
+                try rbin.append(byte);
+            }
+            std.debug.print("r {any}\n", .{rbin.items});
+
+            const trimmed_rbin = std.mem.trimLeft(u8, rbin.items, &[_]u8{0x00});
+            try rbin.resize(trimmed_rbin.len);
+            @memcpy(rbin.items, trimmed_rbin);
+            std.debug.print("3 {any}\n", .{rbin.items});
+
+            if (rbin.items[0] & 0x80 > 0) {
+                try prepend(&rbin, 0x00);
+            }
+            std.debug.print("4 {any}\n", .{rbin.items});
+            const rlen: u8 = @intCast(rbin.items.len);
+
+            // s
+            var sbin = std.ArrayList(u8).init(allocator);
+            defer sbin.deinit();
+            const s = to_big_endian(self.s);
+            for (std.mem.toBytes(s)) |byte| {
+                try sbin.append(byte);
+            }
+            std.debug.print("s {any}\n", .{sbin.items});
+
+            const trimmed_sbin = std.mem.trimLeft(u8, sbin.items, &[_]u8{0x00});
+            try sbin.resize(trimmed_sbin.len);
+            @memcpy(sbin.items, trimmed_sbin);
+            std.debug.print("3 {any}\n", .{sbin.items});
+
+            if (sbin.items[0] & 0x80 > 0) {
+                try prepend(&sbin, 0x00);
+            }
+            std.debug.print("4 {any}\n", .{sbin.items});
+            const slen: u8 = @intCast(sbin.items.len);
+            std.debug.print("rlen {any} slen {any}\n", .{ rlen, slen });
+
+            var result = std.ArrayList(u8).init(allocator);
+            try result.append(0x30);
+            try result.append(rlen + 2 + slen + 2);
+            try result.append(0x02);
+            try result.append(rlen);
+            for (rbin.items) |item| {
+                try result.append(item);
+            }
+            try result.append(0x02);
+            try result.append(slen);
+            for (sbin.items) |item| {
+                try result.append(item);
+            }
+
+            return result.toOwnedSlice();
+        }
+
+        //pub fn parse(der: []u8) @This() {
+        //    //
+        //}
     };
 }
 
@@ -85,31 +174,15 @@ pub fn S256Point() type {
                     try out.append(0x03);
                 }
 
-                const x = endian: {
-                    switch (native_endian) {
-                        .big => break :endian self.point.x.?.num,
-                        .little => break :endian @byteSwap(self.point.x.?.num),
-                    }
-                };
-
+                const x = to_big_endian(self.point.x.?.num);
                 for (std.mem.toBytes(x)) |byte| {
                     try out.append(byte);
                 }
             } else {
                 try out.append(0x04);
 
-                const x = endian: {
-                    switch (native_endian) {
-                        .big => break :endian self.point.x.?.num,
-                        .little => break :endian @byteSwap(self.point.x.?.num),
-                    }
-                };
-                const y = endian: {
-                    switch (native_endian) {
-                        .big => break :endian self.point.y.?.num,
-                        .little => break :endian @byteSwap(self.point.y.?.num),
-                    }
-                };
+                const x = to_big_endian(self.point.x.?.num);
+                const y = to_big_endian(self.point.y.?.num);
 
                 for (std.mem.toBytes(x)) |byte| {
                     try out.append(byte);
@@ -345,5 +418,25 @@ test "s256_sec" {
             const compressed_u8 = try std.fmt.hexToBytes(&buf, compressed);
             try testing.expectEqualSlices(u8, sec, compressed_u8);
         }
+    }
+}
+
+test "signature_der" {
+    const test_cases: [3][2]u32 = .{
+        .{ 1, 2 },
+        .{ 9999, 19999 },
+        .{ 189672304, 200457841 },
+    };
+
+    for (test_cases) |case| {
+        const r = case[0];
+        const s = case[1];
+        const sig = Signature().init(r, s);
+        const der = try sig.der();
+        std.debug.print("{any}\n", .{der});
+
+        //const sig2 = Signature.parse(der);
+        //testing.expectEqual(sig2.r, r);
+        //testing.expectEqual(sig2.s, s);
     }
 }
