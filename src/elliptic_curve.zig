@@ -269,6 +269,34 @@ pub fn S256Point() type {
 
 pub const G = S256Point().init(0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798, 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8);
 
+pub fn PrivateKey() type {
+    return struct {
+        secret: u256,
+        point: S256Point(),
+
+        pub fn init(z: u256) @This() {
+            return @This(){ .secret = z, .point = G.mul(z) };
+        }
+
+        pub fn sign(self: @This(), z: u256) Signature() {
+            const rand = std.crypto.random;
+
+            var k = rand.int(u256);
+            if (k > N) {
+                k -= N;
+            }
+
+            const r = G.mul(k).point.x.?.num;
+            const k_inv = modpow(u256, k, N - 2, N);
+            var s = modmul(u256, z + modmul(u256, r, self.secret, N), k_inv, N);
+            if (s > N / 2) {
+                s = N - s;
+            }
+            return Signature().init(r, s);
+        }
+    };
+}
+
 test "on_curve" {
     const prime: u32 = 223;
     const a = FieldElement(u32).init(0, prime);
@@ -508,4 +536,14 @@ test "signature_der" {
         try testing.expect(sig2.r == r);
         try testing.expect(sig2.s == s);
     }
+}
+
+test "private_key_sign" {
+    const rand = std.crypto.random;
+    const rnd0 = rand.int(u32);
+    const pk = PrivateKey().init(rnd0);
+
+    const z = rand.int(u32);
+    const sig = pk.sign(z);
+    try testing.expect(pk.point.verify(z, sig));
 }
