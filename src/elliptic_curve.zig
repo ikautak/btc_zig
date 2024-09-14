@@ -81,17 +81,14 @@ pub fn Signature() type {
             for (std.mem.toBytes(r)) |byte| {
                 try rbin.append(byte);
             }
-            std.debug.print("r {any}\n", .{rbin.items});
 
             const trimmed_rbin = std.mem.trimLeft(u8, rbin.items, &[_]u8{0x00});
             try rbin.resize(trimmed_rbin.len);
             @memcpy(rbin.items, trimmed_rbin);
-            std.debug.print("3 {any}\n", .{rbin.items});
 
             if (rbin.items[0] & 0x80 > 0) {
                 try prepend(&rbin, 0x00);
             }
-            std.debug.print("4 {any}\n", .{rbin.items});
             const rlen: u8 = @intCast(rbin.items.len);
 
             // s
@@ -101,19 +98,16 @@ pub fn Signature() type {
             for (std.mem.toBytes(s)) |byte| {
                 try sbin.append(byte);
             }
-            std.debug.print("s {any}\n", .{sbin.items});
 
             const trimmed_sbin = std.mem.trimLeft(u8, sbin.items, &[_]u8{0x00});
             try sbin.resize(trimmed_sbin.len);
             @memcpy(sbin.items, trimmed_sbin);
-            std.debug.print("3 {any}\n", .{sbin.items});
 
             if (sbin.items[0] & 0x80 > 0) {
                 try prepend(&sbin, 0x00);
             }
-            std.debug.print("4 {any}\n", .{sbin.items});
             const slen: u8 = @intCast(sbin.items.len);
-            std.debug.print("rlen {any} slen {any}\n", .{ rlen, slen });
+            //std.debug.print("rlen {any} slen {any}\n", .{ rlen, slen });
 
             var result = std.ArrayList(u8).init(allocator);
             try result.append(0x30);
@@ -132,9 +126,85 @@ pub fn Signature() type {
             return result.toOwnedSlice();
         }
 
-        //pub fn parse(der: []u8) @This() {
-        //    //
-        //}
+        pub fn parse(der_sig: []u8) @This() {
+            var i: u32 = 0;
+
+            var marker = der_sig[i];
+            if (marker != 0x30) {
+                @panic("bad signature");
+            }
+            i += 1;
+
+            const length = der_sig[i];
+            if (der_sig.len != length + 2) {
+                @panic("bad signature length");
+            }
+            i += 1;
+
+            marker = der_sig[i];
+            if (marker != 0x02) {
+                @panic("bad signature");
+            }
+            i += 1;
+
+            const r_len = der_sig[i];
+            //std.debug.print("r_len {any}\n", .{r_len});
+            i += 1;
+
+            const r: u256 = parse_r: {
+                var r_bytes: [32]u8 = undefined;
+                @memset(&r_bytes, 0);
+                {
+                    var index: usize = 0;
+                    while (index < r_len) : (index += 1) {
+                        r_bytes[31 - index] = der_sig[i + r_len - 1 - index];
+                    }
+                }
+                //std.debug.print("{any}\n", .{r_bytes});
+
+                var fbs = std.io.fixedBufferStream(&r_bytes);
+                const reader = fbs.reader();
+                break :parse_r reader.readInt(u256, .big) catch unreachable;
+            };
+            //std.debug.print("{any}\n", .{r});
+
+            i += r_len;
+
+            marker = der_sig[i];
+            if (marker != 0x02) {
+                @panic("bad signature");
+            }
+            i += 1;
+
+            const s_len = der_sig[i];
+            //std.debug.print("s_len {any}\n", .{s_len});
+            i += 1;
+
+            const s: u256 = parse_s: {
+                var s_bytes: [32]u8 = undefined;
+                @memset(&s_bytes, 0);
+                {
+                    var index: usize = 0;
+                    while (index < s_len) : (index += 1) {
+                        s_bytes[31 - index] = der_sig[i + s_len - 1 - index];
+                    }
+                }
+                //std.debug.print("{any}\n", .{s_bytes});
+
+                var fbs = std.io.fixedBufferStream(&s_bytes);
+                const reader = fbs.reader();
+                break :parse_s reader.readInt(u256, .big) catch unreachable;
+            };
+            //std.debug.print("{any}\n", .{s});
+
+            if (der_sig.len != 6 + r_len + s_len) {
+                @panic("signature too long");
+            }
+
+            //std.debug.print("r {any}\ns {any}\n", .{ r, s });
+
+            return @This().init(r, s);
+        }
     };
 }
 
@@ -422,7 +492,7 @@ test "s256_sec" {
 }
 
 test "signature_der" {
-    const test_cases: [3][2]u32 = .{
+    const test_cases: [3][2]u256 = .{
         .{ 1, 2 },
         .{ 9999, 19999 },
         .{ 189672304, 200457841 },
@@ -433,10 +503,9 @@ test "signature_der" {
         const s = case[1];
         const sig = Signature().init(r, s);
         const der = try sig.der();
-        std.debug.print("{any}\n", .{der});
 
-        //const sig2 = Signature.parse(der);
-        //testing.expectEqual(sig2.r, r);
-        //testing.expectEqual(sig2.s, s);
+        const sig2 = Signature().parse(der);
+        try testing.expect(sig2.r == r);
+        try testing.expect(sig2.s == s);
     }
 }
