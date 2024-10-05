@@ -2,6 +2,7 @@ const std = @import("std");
 const testing = std.testing;
 
 // field element struct with generic num and prime
+// the size of T supports up to u256
 pub fn FieldElement(comptime T: type) type {
     return struct {
         num: T,

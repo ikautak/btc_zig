@@ -378,7 +378,6 @@ test "ecc_scalar_mul_none" {
 }
 
 test "s256_order" {
-    //@import("std").testing.refAllDeclsRecursive(@This());
     const s256point = G.mul(N);
     try std.testing.expectEqual(null, s256point.point.x);
 }
