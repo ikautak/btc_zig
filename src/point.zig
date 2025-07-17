@@ -10,8 +10,8 @@ pub fn Point(comptime T: type) type {
 
         fn _eq(a: ?T, b: ?T) bool {
             return switch (@typeInfo(T)) {
-                .Int, .Float => a == b,
-                .Struct => {
+                .int, .float => a == b,
+                .@"struct" => {
                     if (a == null and b == null) {
                         return true;
                     } else if (a == null or b == null) {
@@ -30,40 +30,40 @@ pub fn Point(comptime T: type) type {
 
         fn _add(a: T, b: T) T {
             return switch (@typeInfo(T)) {
-                .Int, .Float => a + b,
-                .Struct => @field(T, "add")(a, b),
+                .int, .float => a + b,
+                .@"struct" => @field(T, "add")(a, b),
                 else => @compileError("unsupported type"),
             };
         }
 
         fn _sub(a: T, b: T) T {
             return switch (@typeInfo(T)) {
-                .Int, .Float => a - b,
-                .Struct => @field(T, "sub")(a, b),
+                .int, .float => a - b,
+                .@"struct" => @field(T, "sub")(a, b),
                 else => @compileError("unsupported type"),
             };
         }
 
         fn _mul(a: T, b: T) T {
             return switch (@typeInfo(T)) {
-                .Int, .Float => a * b,
-                .Struct => @field(T, "mul")(a, b),
+                .int, .float => a * b,
+                .@"struct" => @field(T, "mul")(a, b),
                 else => @compileError("unsupported type"),
             };
         }
 
         fn _rmul(a: T, coefficient: anytype) T {
             return switch (@typeInfo(T)) {
-                .Int, .Float => a * coefficient,
-                .Struct => @field(T, "rmul")(a, coefficient),
+                .int, .float => a * coefficient,
+                .@"struct" => @field(T, "rmul")(a, coefficient),
                 else => @compileError("unsupported type"),
             };
         }
 
         fn _div(a: T, b: T) T {
             return switch (@typeInfo(T)) {
-                .Int, .Float => @divTrunc(a, b),
-                .Struct => @field(T, "div")(a, b),
+                .int, .float => @divTrunc(a, b),
+                .@"struct" => @field(T, "div")(a, b),
                 else => @compileError("unsupported type"),
             };
         }
